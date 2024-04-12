@@ -1,0 +1,6 @@
+pydantic
+flask
+transformers
+torch
+sacremoses
+sentencepiece
