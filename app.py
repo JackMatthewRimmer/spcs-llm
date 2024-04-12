@@ -1,7 +1,7 @@
-from flask import Flask
+from flask import Flask, request, jsonify
 from pydantic import BaseModel, model_validator, ValidationError
 from typing import List, Dict, Any
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import LlamaTokenizer, LlamaForCausalLM 
 import os
 
 SERVICE_HOST = os.getenv('SERVICE_HOST', '0.0.0.0')
@@ -26,10 +26,10 @@ We are expecting this incoming JSON to be in the format:
 @app.post('/complete')
 def complete():
     try:
-        request: CompletionRequest = CompletionRequest.model_validate_json(request.json) 
+        body: CompletionRequest = CompletionRequest.model_validate_json(request.data) 
     except ValidationError as e:
         return f"Serialization failed with error: {e}"
-    print(f"Request: {request}")
+    print(f"Request: {body}")
 
     print("Loading model...")
     model, tokenizer = load_model()
@@ -37,10 +37,10 @@ def complete():
 
     prompt: str = f'''
     <s>[INST] <<SYS>>
-    { request.systemPrompt }
+    { body.systemPrompt }
     <</SYS>>
 
-    { request.userPrompt } [/INST]
+    { body.userPrompt } [/INST]
     '''
 
     print(f"Generating chat completion for prompt: {prompt}")
@@ -54,19 +54,13 @@ def complete():
     decoded = tokenizer.decode(output[0], skip_special_tokens=True)
     print(f"Generated chat completion: {decoded}")
 
-    return {
-        "data": {
-           [
-               [0, decoded]
-           ] 
-        }
-    }
-
 
 def load_model():    
-    model = AutoModelForCausalLM.from_pretrained('models/')
-    tokenizer = AutoTokenizer.from_pretrained('models/')
-    model, tokenizer
+    print("Loading model...")
+    model = LlamaForCausalLM.from_pretrained('models/')
+    print("Loading tokenizer...")
+    tokenizer = LlamaTokenizer.from_pretrained('models/')
+    return model, tokenizer
 
 class CompletionRequest(BaseModel):
     systemPrompt: str
