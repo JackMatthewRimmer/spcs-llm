@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, make_response
+from flask import Flask, request, jsonify, make_response, Response
 from pydantic import BaseModel, model_validator, ValidationError
 from typing import List, Dict, Any
 from transformers import LlamaTokenizer, LlamaForCausalLM 
@@ -70,15 +70,15 @@ def load_model():
     tokenizer = LlamaTokenizer.from_pretrained('models/')
 
 
-def error_response(status_code, message):
+def error_response(status_code: int, message: dict) -> Response:
     return create_response({'error': message}, status_code)
 
-def success_response(status_code, message):
+def success_response(status_code: int, message: dict) -> Response:
     response = CompletionResponse(completion=message)
     json = response.dict() 
     return create_response(status_code, json)
 
-def create_response(status_code, body):
+def create_response(status_code: int, body: dict) -> Response:
     json = jsonify(body)
     return make_response(json, status_code)
 
