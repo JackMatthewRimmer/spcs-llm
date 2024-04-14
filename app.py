@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, make_response
 from pydantic import BaseModel, model_validator, ValidationError
 from typing import List, Dict, Any
 from transformers import LlamaTokenizer, LlamaForCausalLM 
@@ -7,6 +7,8 @@ import os
 SERVICE_HOST = os.getenv('SERVICE_HOST', '0.0.0.0')
 SERVICE_PORT = os.getenv('SERVICE_PORT', '8080')
 app = Flask(__name__)
+model = None
+tokenizer = None
 
 @app.get('/healthcheck')
 def healthcheck():
@@ -28,39 +30,48 @@ def complete():
     try:
         body: CompletionRequest = CompletionRequest.model_validate_json(request.data) 
     except ValidationError as e:
-        return f"Serialization failed with error: {e}"
+        return error_response(400, f"Serialization failed with error: {e}")
     print(f"Request: {body}")
 
-    print("Loading model...")
-    model, tokenizer = load_model()
-    print("Model loaded")
-
     prompt: str = f'''
-    <s>[INST] <<SYS>>
     { body.systemPrompt }
-    <</SYS>>
 
-    { body.userPrompt } [/INST]
+    { body.userPrompt }
     '''
 
     print(f"Generating chat completion for prompt: {prompt}")
     print("Encoding prompt...")
     encoded = tokenizer.encode(prompt, return_tensors='pt')
-    print("Prompt encoded")
     print("Generating chat completion...")
     output = model.generate(encoded)
-    print("Chat completion generated")
     print("Decoding chat completion...")
     decoded = tokenizer.decode(output[0], skip_special_tokens=True)
     print(f"Generated chat completion: {decoded}")
+    return success_response(200, decoded)
 
-
+'''
+Loading the model is an expensive operation.
+We want to load the model and tokenizer on startup and then
+reuse them for each request.
+'''
 def load_model():    
+    global model, tokenizer
     print("Loading model...")
     model = LlamaForCausalLM.from_pretrained('models/')
     print("Loading tokenizer...")
     tokenizer = LlamaTokenizer.from_pretrained('models/')
-    return model, tokenizer
+
+
+def error_response(status_code, message):
+    return make_response(jsonify({'error': message}), status_code)
+
+def success_response(status_code, message):
+    return make_response(jsonify({'completion': message}), status_code)
+
+def create_response(status_code, body):
+    body = jsonify(body)
+    return make_response(body, status_code)
+
 
 class CompletionRequest(BaseModel):
     systemPrompt: str
@@ -87,4 +98,5 @@ class CompletionRequest(BaseModel):
         }
 
 if __name__ == '__main__':
+    load_model()
     app.run(SERVICE_HOST, SERVICE_PORT, debug=True)
