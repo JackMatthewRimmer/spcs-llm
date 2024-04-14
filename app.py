@@ -46,8 +46,16 @@ def complete():
     output = model.generate(encoded)
     print("Decoding chat completion...")
     decoded = tokenizer.decode(output[0], skip_special_tokens=True)
-    print(f"Generated chat completion: {decoded}")
-    return success_response(200, decoded)
+    parsed_completion = parse_response(decoded, prompt)
+    print(f"Generated chat completion: {parsed_completion}")
+    return success_response(200, parsed_completion)
+
+
+def parse_response(completion: str, prompt: str) -> str:
+    cleaned = completion.replace(prompt, '')
+    return cleaned.lstrip('\n').rstrip('\n').lstrip(' ').rstrip(' ')
+
+
 
 '''
 Loading the model is an expensive operation.
@@ -63,14 +71,16 @@ def load_model():
 
 
 def error_response(status_code, message):
-    return make_response(jsonify({'error': message}), status_code)
+    return create_response({'error': message}, status_code)
 
 def success_response(status_code, message):
-    return make_response(jsonify({'completion': message}), status_code)
+    response = CompletionResponse(completion=message)
+    json = response.dict() 
+    return create_response(status_code, json)
 
 def create_response(status_code, body):
-    body = jsonify(body)
-    return make_response(body, status_code)
+    json = jsonify(body)
+    return make_response(json, status_code)
 
 
 class CompletionRequest(BaseModel):
@@ -95,6 +105,17 @@ class CompletionRequest(BaseModel):
             "userPrompt": data_array[0][2],
             "inputValues": data_array[0][3],
             "metadata": data_array[0][4],
+        }
+
+class CompletionResponse(BaseModel):
+    completion: str
+
+    def dict(self):
+        return {
+            "data": [
+                [0, self.completion]
+            ]
+
         }
 
 if __name__ == '__main__':
