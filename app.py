@@ -44,7 +44,7 @@ def complete():
         print("Encoding prompt...")
         encoded = tokenizer.encode(prompt, return_tensors='pt')
         print("Generating chat completion...")
-        output = model.generate(encoded)
+        output = model.generate(encoded, max_new_tokens=100)
         print("Decoding chat completion...")
         decoded = tokenizer.decode(output[0], skip_special_tokens=True)
         parsed_completion = parse_response(decoded, prompt)
