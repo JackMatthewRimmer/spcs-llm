@@ -39,16 +39,20 @@ def complete():
     { body.userPrompt }
     '''
 
-    print(f"Generating chat completion for prompt: {prompt}")
-    print("Encoding prompt...")
-    encoded = tokenizer.encode(prompt, return_tensors='pt')
-    print("Generating chat completion...")
-    output = model.generate(encoded)
-    print("Decoding chat completion...")
-    decoded = tokenizer.decode(output[0], skip_special_tokens=True)
-    parsed_completion = parse_response(decoded, prompt)
-    print(f"Generated chat completion: {parsed_completion}")
-    return success_response(200, parsed_completion)
+    try:
+        print(f"Generating chat completion for prompt: {prompt}")
+        print("Encoding prompt...")
+        encoded = tokenizer.encode(prompt, return_tensors='pt')
+        print("Generating chat completion...")
+        output = model.generate(encoded)
+        print("Decoding chat completion...")
+        decoded = tokenizer.decode(output[0], skip_special_tokens=True)
+        parsed_completion = parse_response(decoded, prompt)
+        print(f"Generated completion: {decoded}")
+        print(f"Parsed completion: {parsed_completion}")
+        return success_response(200, parsed_completion)
+    except Exception as e:
+        return error_response(500, f"Failed to generate chat completion with error: {e}")
 
 
 def parse_response(completion: str, prompt: str) -> str:
